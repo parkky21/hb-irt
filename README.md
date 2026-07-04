@@ -1,29 +1,54 @@
+<div align="center">
+
 # hb-irt
 
-**Bayesian ability estimation and Item Response Theory (IRT) for skill assessment.**
+**Bayesian ability estimation and Item Response Theory (IRT) for skill assessment**
+
+[![PyPI version](https://img.shields.io/pypi/v/hb-irt.svg?color=blue)](https://pypi.org/project/hb-irt/)
+[![Python versions](https://img.shields.io/pypi/pyversions/hb-irt.svg)](https://pypi.org/project/hb-irt/)
+[![License: MIT](https://img.shields.io/pypi/l/hb-irt.svg)](LICENSE)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](CLAUDE.md)
+
+</div>
 
 `hb-irt` scores candidate responses — multiple-choice questions and open-ended
 questions graded on a 0-10 or 0-100 scale — into a single latent ability
 estimate with a calibrated uncertainty range, and supports adaptive,
 multi-stage testing on top of it.
 
+---
+
+### Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+- [Concepts](#concepts)
+- [Usage guide](#usage-guide)
+- [Package layout](#package-layout)
+- [Development](#development)
+- [License](#license)
+
+---
+
 ## Features
 
-- **3PL model** for multiple-choice items (discrimination, difficulty, guessing).
-- **Graded Response Model (GRM)** for open-ended answers scored 0-10.
-- **Continuous Response Model (CRM)** for open-ended answers scored 0-100.
-- **Bayesian ability estimation** — EAP (Gauss-Hermite quadrature) and MAP,
-  with posterior variance and 95% credible intervals out of the box.
-- **Sequential updating** across test stages/modules — each stage's posterior
-  becomes the prior for the next, so ability estimates accumulate evidence
-  without re-scoring from scratch.
-- **Item calibration** via Marginal Maximum Likelihood (MMLE/EM) from raw
-  response data.
-- **Score rescaling and aggregation** — precision-weighted combination of
-  per-topic estimates into a single 0-100 score with a margin of error.
-- **Multi-Stage Adaptive Testing (MSAT)** — information-maximizing module
-  selection with exposure control, plus configurable stopping rules
-  (precision threshold, module cap, minimum items, information saturation).
+| | |
+|---|---|
+| **Item models** | 3PL (multiple-choice), GRM (0-10 graded), CRM (0-100 continuous) |
+| **Ability estimation** | EAP (Gauss-Hermite quadrature) and MAP, with posterior variance and 95% credible intervals |
+| **Sequential updating** | Each test stage's posterior becomes the next stage's prior — no re-scoring from scratch |
+| **Item calibration** | Marginal Maximum Likelihood (MMLE/EM) fit from raw response data |
+| **Score aggregation** | Precision-weighted combination of per-topic estimates into a 0-100 score ± margin of error |
+| **Adaptive testing** | Information-maximizing module selection with exposure control, and configurable stopping rules |
+
+Responses from any mix of item types combine into a single ability estimate:
+
+| Response type | Model | `value` represents |
+|---|---|---|
+| Multiple-choice | **3PL** | `0` / `1` |
+| Open-ended, scored 0-10 | **GRM** | integer category `0`–`10` |
+| Open-ended, scored 0-100 | **CRM** | continuous score `0`–`100` |
 
 ## Installation
 
@@ -37,7 +62,7 @@ or, with [uv](https://docs.astral.sh/uv/):
 uv add hb-irt
 ```
 
-Requires Python 3.12+. Depends on `numpy` and `scipy`.
+> Requires Python 3.12+. Depends on `numpy` and `scipy`.
 
 ## Quickstart
 
@@ -76,15 +101,13 @@ print(f"{score.score_0_100:.1f} ± {score.margin_error_95:.1f}")
   a candidate's ability throughout the library. It exposes `.sem` (standard
   error) and `.credible_interval(level)`.
 - **Item models** (3PL, GRM, CRM) share a minimal common interface:
-  `loglik(value, theta)` and `info(theta)`. `value` means whatever is natural
-  for that model — 0/1 for a multiple-choice item, an integer 0-10 category
-  for a graded response, or a raw 0-100 score for a continuous response — so
-  responses from any mix of item types can be combined in one ability
-  estimate.
+  `loglik(value, theta)` and `info(theta)` — which is what lets responses of
+  every type combine into a single ability estimate.
 
 ## Usage guide
 
-### Multiple-choice items (3PL)
+<details>
+<summary><strong>Multiple-choice items (3PL)</strong></summary>
 
 ```python
 from hb_irt.types import Item
@@ -96,7 +119,10 @@ item.loglik(value=1, theta=0.3)
 item.info(theta=0.3)          # Fisher information at theta=0.3
 ```
 
-### Open-ended answers scored 0-10 (Graded Response Model)
+</details>
+
+<details>
+<summary><strong>Open-ended answers scored 0-10 (Graded Response Model)</strong></summary>
 
 ```python
 from hb_irt.models.grm import GRMItem, GRMModel
@@ -108,7 +134,10 @@ item.loglik(value=7, theta=0.5)          # value is the observed 0-10 score
 item.info(theta=0.5)
 ```
 
-### Open-ended answers scored 0-100 (Continuous Response Model)
+</details>
+
+<details>
+<summary><strong>Open-ended answers scored 0-100 (Continuous Response Model)</strong></summary>
 
 ```python
 from hb_irt.models.crm import CRMItem, CRMModel
@@ -118,7 +147,10 @@ item.loglik(value=72.0, theta=0.4)
 item.info(theta=0.4)
 ```
 
-### Ability estimation (EAP / MAP) across mixed item types
+</details>
+
+<details>
+<summary><strong>Ability estimation (EAP / MAP) across mixed item types</strong></summary>
 
 ```python
 from hb_irt.bayes.estimation import eap_estimate, map_estimate
@@ -133,7 +165,10 @@ posterior = eap_estimate(responses, prior_mu=0.0, prior_sigma=1.0)
 theta_map = map_estimate(responses, prior_mu=0.0, prior_sigma=1.0)
 ```
 
-### Sequential updating across test stages
+</details>
+
+<details>
+<summary><strong>Sequential updating across test stages</strong></summary>
 
 ```python
 from hb_irt.types import Posterior
@@ -147,11 +182,14 @@ stage_2_posterior = sequential_update(stage_1_posterior, stage_2_responses)
 history = sequential_update_all(prior, [stage_1_responses, stage_2_responses])
 ```
 
-Posterior variance is guaranteed to never increase across stages (assuming
-non-degenerate item information), so estimates only get more precise as a
-candidate answers more items.
+> Posterior variance is guaranteed to never increase across stages (assuming
+> non-degenerate item information), so estimates only get more precise as a
+> candidate answers more items.
 
-### Item calibration (MMLE/EM)
+</details>
+
+<details>
+<summary><strong>Item calibration (MMLE/EM)</strong></summary>
 
 Fit 3PL item parameters from a batch of raw response data:
 
@@ -166,10 +204,13 @@ result.converged      # bool
 result.n_iterations   # int
 ```
 
-Pass `fixed_c=<value>` when calibrating with fewer than ~500 responses per
-item; otherwise omit it to freely estimate a guessing parameter per item.
+> Pass `fixed_c=<value>` when calibrating with fewer than ~500 responses per
+> item; otherwise omit it to freely estimate a guessing parameter per item.
 
-### Difficulty mapping by cognitive level
+</details>
+
+<details>
+<summary><strong>Difficulty mapping by cognitive level</strong></summary>
 
 ```python
 from hb_irt.bloom import difficulty_anchor, shrink_difficulty
@@ -181,7 +222,10 @@ difficulty_anchor("L4")  # -> 1.2  (an "Analysis"-level item's typical difficult
 shrunk_b = shrink_difficulty(raw_difficulty=1.9, raw_variance=0.3, level="L4", sigma_b=0.4)
 ```
 
-### Score rescaling and topic aggregation
+</details>
+
+<details>
+<summary><strong>Score rescaling and topic aggregation</strong></summary>
 
 ```python
 from hb_irt.scoring import aggregate_levels, rescale_0_100, build_subskill_score
@@ -204,7 +248,10 @@ subskill_score = build_subskill_score(
 # subskill_score.score_0_100, .margin_error_95, .ci_lower_95, .ci_upper_95, ...
 ```
 
-### Adaptive testing (MSAT): module bank, selection, stopping
+</details>
+
+<details>
+<summary><strong>Adaptive testing (MSAT): module bank, selection, stopping</strong></summary>
 
 ```python
 from hb_irt.types import Posterior
@@ -234,6 +281,8 @@ if decision.should_stop:
 candidate. `select_next_module` picks the module that maximizes expected
 information gain at the candidate's current ability estimate, with an
 exposure-control bonus that favors less-used modules.
+
+</details>
 
 ## Package layout
 
