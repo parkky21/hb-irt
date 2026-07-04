@@ -3,14 +3,43 @@ name = "hb-irt"
 version = "0.1.0"
 description = "Bayesian updating and Item Response Theory (MCQ 3PL, graded/continuous QA) for candidate skill assessment"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Parkky", email = "parth.kale.dev@gmail.com" }
 ]
 requires-python = ">=3.12"
+keywords = [
+    "irt",
+    "item-response-theory",
+    "bayesian",
+    "psychometrics",
+    "adaptive-testing",
+    "assessment",
+    "3pl",
+    "grm",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Education :: Testing",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
 dependencies = [
     "numpy>=2.5.0",
     "scipy>=1.18.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/parkky21/hb-irt"
+Repository = "https://github.com/parkky21/hb-irt"
+Issues = "https://github.com/parkky21/hb-irt/issues"
 
 [build-system]
 requires = ["uv_build>=0.9.22,<0.10.0"]

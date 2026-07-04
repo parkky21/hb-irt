@@ -64,6 +64,86 @@ uv add --dev <package>    # dev-only dependency (linters, test tools, etc.)
 
 ---
 
+## Publishing to PyPI
+
+This package is set up to publish via `uv`, using the `uv_build` backend
+(`[build-system]` in `pyproject.toml`). `hb-irt` is confirmed available (not
+yet registered) on PyPI as of this writing.
+
+### One-time setup
+
+1. Create accounts on both [TestPyPI](https://test.pypi.org) and
+   [PyPI](https://pypi.org) if you don't have them.
+2. Generate an API token for each (Account Settings -> API tokens). Scope the
+   token to the project once it exists there, or use an account-wide token for
+   the very first upload.
+3. Do not commit tokens. Export them as an environment variable per upload, or
+   use `uv publish --token <token>` interactively (avoid putting the token in
+   shell history — prefer the environment variable form below).
+
+### Build
+
+```bash
+uv build
+```
+
+Produces `dist/hb_irt-<version>-py3-none-any.whl` and
+`dist/hb_irt-<version>.tar.gz`. Inspect the sdist before publishing if you've
+changed packaging config:
+
+```bash
+tar -tzf dist/hb_irt-*.tar.gz    # confirm only src/, LICENSE, README, pyproject.toml are included
+```
+
+### Publish to TestPyPI first (recommended)
+
+Always do a dry run on TestPyPI before the real index — a version number can
+never be reused on PyPI once published, even if deleted.
+
+```bash
+UV_PUBLISH_TOKEN=<test-pypi-token> uv publish --publish-url https://test.pypi.org/legacy/
+```
+
+Then verify installability from TestPyPI in a scratch venv:
+
+```bash
+uv venv /tmp/hb-irt-smoke && uv pip install --python /tmp/hb-irt-smoke/bin/python \
+  --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ hb-irt
+```
+
+(`--extra-index-url` is needed because `numpy`/`scipy` aren't on TestPyPI.)
+
+### Publish to PyPI
+
+```bash
+UV_PUBLISH_TOKEN=<pypi-token> uv publish
+```
+
+### Versioning
+
+`pyproject.toml`'s `[project].version` is the **single source of truth**.
+`hb_irt.__version__` reads it at runtime via `importlib.metadata.version("hb-irt")`
+(see `src/hb_irt/__init__.py`) — there is nothing else to keep in sync.
+
+Before each release:
+
+1. Bump `version` in `pyproject.toml` (follow [SemVer](https://semver.org/):
+   this is pre-1.0, so breaking changes can land in `0.x` minor bumps — bump
+   the patch version for fixes, minor for additions/breaking changes while
+   pre-1.0).
+2. Run `uv run pytest` (100% coverage gate must pass).
+3. `uv build`, then publish to TestPyPI, verify, then publish to PyPI.
+4. Tag the release in git (`git tag v<version>`) once published — ask before
+   pushing tags to a shared remote.
+
+### Before the first publish, also consider
+
+- Re-reading `Development Status :: 3 - Alpha` in the classifiers list in
+  `pyproject.toml` and bumping it (e.g. to `4 - Beta` / `5 - Production/Stable`)
+  as the package matures.
+
+---
+
 ## Architecture
 
 ```

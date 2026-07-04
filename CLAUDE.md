@@ -90,3 +90,12 @@ This project uses **uv**. Do not use bare `pip`/`venv`.
 - Add a dependency: `uv add <package>`
 - Add a dev dependency: `uv add --dev <package>`
 - Run tests with coverage: `uv run pytest`
+
+## Distribution
+
+This package is published to PyPI as `hb-irt` (import name `hb_irt`), built via
+the `uv_build` backend. `pyproject.toml`'s `[project].version` is the single
+source of truth for the version; `hb_irt.__version__` reads it at runtime via
+`importlib.metadata`. See the README's "Publishing to PyPI" section for the
+full build/test/publish workflow — never bump the version or publish without
+following that process, and never reuse a version number once published.
