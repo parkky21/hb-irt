@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 
-from ..models.threepl import ThreePLModel
+from ..models.factory import build_model
 from ..quadrature import DEFAULT_N_POINTS, quadrature_grid
 from ..types import Posterior, TestModule
 from .module_bank import ModuleBank
@@ -16,8 +16,12 @@ DEFAULT_BETA = 5.0  # exposure decay rate (spec §2.3)
 
 def information_at_estimate(module: TestModule, theta: float) -> float:
     """I_Q(mu_curr) = sum_i I_i(mu_curr), the module's Fisher information
-    evaluated at a single ability value (spec Algorithm §2.3, step 1a)."""
-    return sum(ThreePLModel(item).info(theta) for item in module.items)
+    evaluated at a single ability value (spec Algorithm §2.3, step 1a).
+
+    Items may be 3PL, GRM, or CRM -- each is dispatched to its `ItemModel`
+    via `build_model` so modules aren't restricted to MCQ items.
+    """
+    return sum(build_model(item).info(theta) for item in module.items)
 
 
 def expected_information_gain(

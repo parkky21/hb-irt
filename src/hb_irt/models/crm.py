@@ -17,8 +17,6 @@ from scipy.stats import norm
 
 from .base import ItemModel
 
-_EPS = 1e-9
-
 
 @dataclass(frozen=True)
 class CRMItem:
@@ -27,18 +25,32 @@ class CRMItem:
     a: discrimination (precision of the transformed response given theta)
     b: difficulty / location
     max_score: upper bound of the raw response scale (e.g. 100.0)
+    boundary_clip: exact-boundary scores (0 or max_score) are clipped inward by
+        this amount before the logit transform -- a 100/100 is treated as
+        at-least-99.5, i.e. half the finest distinguishable rubric step. Without
+        this, an exact boundary score maps to z = +-inf, which drives the
+        posterior to a degenerate (near-zero-variance) estimate outside the
+        plausible ability range. Not part of the spec; a practical clip for the
+        Samejima (1973) continuous response model, whose density is undefined
+        exactly at the scale endpoints.
     """
 
     item_id: str
     a: float
     b: float
     max_score: float = 100.0
+    boundary_clip: float = 0.5
 
     def __post_init__(self) -> None:
         if self.a <= 0:
             raise ValueError(f"discrimination a must be > 0, got {self.a}")
         if self.max_score <= 0:
             raise ValueError(f"max_score must be > 0, got {self.max_score}")
+        if not (0.0 < self.boundary_clip < self.max_score / 2.0):
+            raise ValueError(
+                f"boundary_clip must be in (0, max_score/2), got "
+                f"{self.boundary_clip} (max_score={self.max_score})"
+            )
 
 
 class CRMModel(ItemModel):
@@ -49,7 +61,7 @@ class CRMModel(ItemModel):
         self.item_id = item.item_id
 
     def _clip(self, value: float) -> float:
-        lo, hi = _EPS * self.item.max_score, self.item.max_score * (1.0 - _EPS)
+        lo, hi = self.item.boundary_clip, self.item.max_score - self.item.boundary_clip
         if not (0.0 <= value <= self.item.max_score):
             raise ValueError(
                 f"CRM response must be in [0, {self.item.max_score}], got {value}"

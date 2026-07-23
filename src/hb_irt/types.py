@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .models.crm import CRMItem
+    from .models.grm import GRMItem
 
 
 @dataclass(frozen=True)
@@ -77,12 +82,17 @@ def _z_for_level(level: float) -> float:
 
 @dataclass(frozen=True)
 class TestModule:
-    """A pre-constructed test module of 5-20 items (spec §2.2, eq 1)."""
+    """A pre-constructed test module of 5-20 items (spec §2.2, eq 1).
+
+    `items` may mix 3PL, GRM, and CRM items -- module selection and scoring
+    only require each item's `ItemModel` (via `models.factory.build_model`),
+    so a module isn't restricted to a single item type.
+    """
 
     __test__ = False  # not a pytest test class despite the name
 
     module_id: str
-    items: tuple[Item, ...]
+    items: tuple[Item | GRMItem | CRMItem, ...]
     module_type: str = "medium"
     n_exposures: int = 0
 
