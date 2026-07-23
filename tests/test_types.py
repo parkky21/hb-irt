@@ -2,6 +2,7 @@ import math
 
 import pytest
 
+from hb_irt.models.crm import CRMItem
 from hb_irt.types import Item, Posterior, Response, SubskillScore, TestModule
 
 
@@ -88,6 +89,13 @@ class TestTestModule:
     def test_boundary_sizes_allowed(self):
         TestModule(module_id="m1", items=self._items(5))
         TestModule(module_id="m1", items=self._items(20))
+
+    def test_accepts_crm_items(self):
+        crm_items = tuple(
+            CRMItem(item_id=f"q{i}", a=1.0, b=0.0) for i in range(6)
+        )
+        module = TestModule(module_id="m_qa", items=crm_items)
+        assert module.size == 6
 
 
 class TestSubskillScore:

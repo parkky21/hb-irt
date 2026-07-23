@@ -2,6 +2,8 @@ import math
 
 import pytest
 
+from hb_irt.models.crm import CRMItem, CRMModel
+from hb_irt.models.grm import GRMItem
 from hb_irt.msat.module_bank import ModuleBank
 from hb_irt.msat.selection import (
     expected_information_gain,
@@ -22,6 +24,22 @@ def make_module(module_id, b=0.0, module_type="medium", n_items=5, n_exposures=0
     )
 
 
+def make_crm_module(module_id, a=1.2, n_items=5, n_exposures=0):
+    items = tuple(CRMItem(item_id=f"{module_id}_q{i}", a=a, b=0.0) for i in range(n_items))
+    return TestModule(module_id=module_id, items=items, n_exposures=n_exposures)
+
+
+def make_mixed_module(module_id, n_exposures=0):
+    items = (
+        Item(item_id=f"{module_id}_mcq1", a=1.3, b=0.0, c=0.2),
+        Item(item_id=f"{module_id}_mcq2", a=1.1, b=0.0, c=0.2),
+        GRMItem(item_id=f"{module_id}_grm1", a=1.2, boundaries=(-1.0, 0.0, 1.0)),
+        CRMItem(item_id=f"{module_id}_crm1", a=1.0, b=0.0),
+        CRMItem(item_id=f"{module_id}_crm2", a=0.9, b=0.0),
+    )
+    return TestModule(module_id=module_id, items=items, n_exposures=n_exposures)
+
+
 class TestInformationAtEstimate:
     def test_matches_sum_of_item_info(self):
         module = make_module("m1", b=0.0, n_items=5)
@@ -33,6 +51,24 @@ class TestInformationAtEstimate:
     def test_peaks_near_module_difficulty(self):
         module = make_module("m1", b=1.0)
         assert information_at_estimate(module, 1.0) > information_at_estimate(module, 4.0)
+
+
+class TestInformationAtEstimateNonMCQ:
+    def test_all_crm_module_matches_sum_of_a_squared(self):
+        module = make_crm_module("crm_mod", a=1.2, n_items=5)
+        info = information_at_estimate(module, theta=0.0)
+        assert math.isclose(info, 5 * CRMModel(CRMItem("x", a=1.2, b=0.0)).info(0.0))
+
+    def test_crm_information_is_constant_across_theta(self):
+        module = make_crm_module("crm_mod", a=1.2, n_items=5)
+        info_low = information_at_estimate(module, theta=-3.0)
+        info_high = information_at_estimate(module, theta=3.0)
+        assert math.isclose(info_low, info_high)
+
+    def test_mixed_item_module_sums_all_item_types(self):
+        module = make_mixed_module("mixed_mod")
+        info = information_at_estimate(module, theta=0.0)
+        assert info > 0
 
 
 class TestExpectedInformationGain:
@@ -106,3 +142,23 @@ class TestSelectNextModule:
         bank = ModuleBank(modules=(make_module("m1"),))
         with pytest.raises(ValueError):
             select_next_module(bank, Posterior(mu=0.0, variance=1.0), administered_ids=["m1"])
+
+    def test_selects_most_informative_among_crm_modules(self):
+        bank = ModuleBank(
+            modules=(
+                make_crm_module("weak", a=0.5),
+                make_crm_module("strong", a=2.0),
+            )
+        )
+        chosen = select_next_module(bank, Posterior(mu=0.0, variance=1.0), administered_ids=[])
+        assert chosen.module_id == "strong"
+
+    def test_selects_among_mixed_item_modules(self):
+        bank = ModuleBank(
+            modules=(
+                make_mixed_module("mix1"),
+                make_module("mcq_only", b=5.0),
+            )
+        )
+        chosen = select_next_module(bank, Posterior(mu=0.0, variance=1.0), administered_ids=[])
+        assert chosen.module_id == "mix1"

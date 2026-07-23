@@ -2,11 +2,14 @@ import math
 
 import pytest
 
+from hb_irt.bayes.estimation import eap_estimate
 from hb_irt.models.crm import CRMItem, CRMModel
 
 
-def make_model(a=1.0, b=0.0, max_score=100.0):
-    return CRMModel(CRMItem(item_id="qa2", a=a, b=b, max_score=max_score))
+def make_model(a=1.0, b=0.0, max_score=100.0, boundary_clip=0.5):
+    return CRMModel(
+        CRMItem(item_id="qa2", a=a, b=b, max_score=max_score, boundary_clip=boundary_clip)
+    )
 
 
 class TestCRMItem:
@@ -17,6 +20,14 @@ class TestCRMItem:
     def test_rejects_nonpositive_max_score(self):
         with pytest.raises(ValueError):
             CRMItem(item_id="qa2", a=1.0, b=0.0, max_score=0.0)
+
+    def test_rejects_nonpositive_boundary_clip(self):
+        with pytest.raises(ValueError):
+            CRMItem(item_id="qa2", a=1.0, b=0.0, boundary_clip=0.0)
+
+    def test_rejects_boundary_clip_at_or_above_half_max_score(self):
+        with pytest.raises(ValueError):
+            CRMItem(item_id="qa2", a=1.0, b=0.0, max_score=100.0, boundary_clip=50.0)
 
 
 class TestTransform:
@@ -39,6 +50,17 @@ class TestTransform:
         model = make_model(max_score=100.0)
         assert math.isfinite(model.transform(0.0))
         assert math.isfinite(model.transform(100.0))
+
+    def test_transform_clips_to_boundary_clip_amount(self):
+        model = make_model(max_score=100.0, boundary_clip=0.5)
+        assert math.isclose(model.transform(100.0), math.log(99.5 / 0.5))
+        assert math.isclose(model.transform(0.0), math.log(0.5 / 99.5))
+
+    def test_transform_respects_custom_boundary_clip(self):
+        loose = make_model(max_score=100.0, boundary_clip=5.0)
+        tight = make_model(max_score=100.0, boundary_clip=0.1)
+        # a looser clip pulls the boundary score further from the extreme
+        assert abs(loose.transform(100.0)) < abs(tight.transform(100.0))
 
 
 class TestLoglik:
@@ -79,3 +101,22 @@ class TestInfo:
         low = make_model(a=0.5)
         high = make_model(a=2.0)
         assert high.info(0.0) > low.info(0.0)
+
+
+class TestBoundaryScoreRegression:
+    """A perfect (or zero) raw score must not produce a degenerate posterior
+    (regression: previously reported score ~128.5 +/- 0.0 for a 100/100)."""
+
+    def test_perfect_score_yields_plausible_finite_posterior(self):
+        model = make_model(a=1.2, b=0.3)
+        posterior = eap_estimate([(model, 100.0)], prior_mu=0.0, prior_sigma=1.0)
+        assert math.isfinite(posterior.mu)
+        assert -6.0 < posterior.mu < 6.0
+        assert posterior.variance > 0.0
+
+    def test_zero_score_yields_plausible_finite_posterior(self):
+        model = make_model(a=1.2, b=0.3)
+        posterior = eap_estimate([(model, 0.0)], prior_mu=0.0, prior_sigma=1.0)
+        assert math.isfinite(posterior.mu)
+        assert -6.0 < posterior.mu < 6.0
+        assert posterior.variance > 0.0
