@@ -60,6 +60,7 @@ src/hb_irt/
     threepl.py        # 3PL MCQ model
     grm.py            # Graded Response Model (0-10 ordinal QA)
     crm.py             # Continuous Response Model (0-100 QA)
+    factory.py           # dispatch item data type -> its ItemModel
   bayes/
     estimation.py      # EAP, MAP, posterior variance, credible interval
     sequential.py       # sequential Bayesian update across modules
@@ -82,10 +83,11 @@ src/hb_irt/
 | `models/threepl.py` | §3.1, eq 4; §A.2 | 3PL probability + Fisher information for MCQ items |
 | `models/grm.py` | not in spec (see docstring) | Samejima GRM for 0-10 graded QA responses |
 | `models/crm.py` | not in spec (see docstring) | Samejima continuous response model for 0-100 QA responses |
+| `models/factory.py` | not in spec (support code) | `build_model(item) -> ItemModel` dispatch, so `TestModule`/MSAT selection aren't restricted to a single item type |
 | `bayes/estimation.py` | §4.1-4.2, eq 7 | EAP (quadrature) and MAP (optimization) ability estimates |
 | `bayes/sequential.py` | §4.4, eq 10 | Chains module posteriors: posterior_{t-1} becomes prior_t |
 | `information.py` | eq 2, A.2 | Additive test information, SEM = 1/sqrt(I(theta)) |
-| `calibration.py` | §3.2, eq 5 | MMLE via EM (Bock & Aitkin) to fit 3PL item parameters from response data |
+| `calibration.py` | §3.2, eq 5 (3PL); not in spec (CRM/GRM, see docstrings) | MMLE via EM (Bock & Aitkin) to fit 3PL, CRM, and GRM item parameters from response data |
 | `bloom.py` | §3.3, Table 6, eq 6 | Bloom level difficulty anchors + empirical-Bayes shrinkage |
 | `scoring.py` | §5.1-5.3, eq 11-15 | 0-100 rescaling (`50 + 10*theta`), margin of error, per-level precision-weighted aggregation |
 | `msat/module_bank.py` | §2.1-2.2, Table 1-2 | Module repository, target ability ranges by type |

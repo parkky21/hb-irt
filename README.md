@@ -149,6 +149,12 @@ item.loglik(value=72.0, theta=0.4)
 item.info(theta=0.4)
 ```
 
+> Exact boundary scores (`0` or `max_score`) are clipped inward by
+> `boundary_clip` (default `0.5`) before the logit transform — a `100/100` is
+> treated as at-least-`99.5`. Without this, an exact boundary score maps to
+> `theta = +-inf` and produces a degenerate, over-confident posterior. Raise
+> `boundary_clip` if your grader's resolution is coarser than whole points.
+
 </details>
 
 <details>
@@ -208,6 +214,24 @@ result.n_iterations   # int
 
 > Pass `fixed_c=<value>` when calibrating with fewer than ~500 responses per
 > item; otherwise omit it to freely estimate a guessing parameter per item.
+
+Fit CRM or GRM item parameters the same way, from raw graded-answer data:
+
+```python
+from hb_irt.calibration import calibrate_crm, calibrate_grm
+
+# CRM: raw 0-100 scores, shape (n_examinees, n_items)
+crm_result = calibrate_crm(scores, item_ids=["qa1", "qa2"], max_score=100.0)
+crm_result.items  # tuple of CRMItem with fitted discrimination/difficulty
+
+# GRM: integer category indices in [0, n_categories), shape (n_examinees, n_items)
+grm_result = calibrate_grm(responses, n_categories=11, item_ids=["qa1", "qa2"])
+grm_result.items  # tuple of GRMItem with fitted discrimination/boundaries
+```
+
+> Each item needs at least 2 distinct observed categories/scores to be
+> identifiable; `calibrate_grm` raises `ValueError` naming any item that
+> doesn't.
 
 </details>
 
@@ -284,6 +308,14 @@ candidate. `select_next_module` picks the module that maximizes expected
 information gain at the candidate's current ability estimate, with an
 exposure-control bonus that favors less-used modules.
 
+> A `TestModule` isn't limited to multiple-choice items — its `items` can mix
+> `Item` (3PL), `GRMItem`, and `CRMItem` freely; module selection dispatches
+> each to its `ItemModel` via `hb_irt.models.factory.build_model`. Note that
+> CRM item information is constant in theta (it doesn't depend on ability), so
+> information-maximizing selection has nothing to differentiate on across a
+> pure-CRM bank — difficulty-based routing only does useful work for 3PL/GRM
+> items.
+
 </details>
 
 ## Package layout
@@ -294,10 +326,11 @@ exposure-control bonus that favors less-used modules.
 | `hb_irt.models.threepl` | 3PL model for multiple-choice items |
 | `hb_irt.models.grm` | Graded Response Model for 0-10 scored answers |
 | `hb_irt.models.crm` | Continuous Response Model for 0-100 scored answers |
+| `hb_irt.models.factory` | Dispatch from item data type to its `ItemModel` |
 | `hb_irt.bayes.estimation` | EAP and MAP ability estimation |
 | `hb_irt.bayes.sequential` | Sequential Bayesian updating across test stages |
 | `hb_irt.information` | Fisher test information and standard error of measurement |
-| `hb_irt.calibration` | MMLE/EM calibration of 3PL item parameters |
+| `hb_irt.calibration` | MMLE/EM calibration of 3PL, CRM, and GRM item parameters |
 | `hb_irt.bloom` | Cognitive-level difficulty anchors and shrinkage |
 | `hb_irt.scoring` | 0-100 rescaling and precision-weighted level aggregation |
 | `hb_irt.msat` | Adaptive module bank, selection, and stopping rules |
