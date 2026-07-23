@@ -4,6 +4,8 @@
 
 **Bayesian ability estimation and Item Response Theory (IRT) for skill assessment**
 
+Same math as the GRE, with uncertainty we actually show — and the score gets more trustworthy every time someone takes the test."
+
 [![PyPI version](https://img.shields.io/pypi/v/hb-irt.svg?color=blue)](https://pypi.org/project/hb-irt/)
 [![Python versions](https://img.shields.io/pypi/pyversions/hb-irt.svg)](https://pypi.org/project/hb-irt/)
 [![License: MIT](https://img.shields.io/pypi/l/hb-irt.svg)](LICENSE)
